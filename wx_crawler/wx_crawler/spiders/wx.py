@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-  
+﻿# -*- coding:utf-8 -*-  
 from __future__ import unicode_literals
 import sys
 reload(sys)
@@ -13,7 +13,7 @@ class WeixinSpider(scrapy.Spider):
     name = "weixin"
     allowed_domains = ["qq.com"]
     start_urls = (
-        'http://mp.weixin.qq.com/mp/getmasssendmsg?__biz=MjM5MjAxNDM4MA==&uin=MTM4MjQxMDAyMw%3D%3D&key=41ecb04b05111003d6676872ca43d9a6a35d9c5c51ebfa967daaae2be0a9b43c9d90054cc92920ada2322485bd6b19b4&devicetype=Windows+7&version=61050021&lang=zh_CN&pass_ticket=O9umiQsIzz6lYNyyWc19HvRujO2KD4CLxVCA7PtqRAO9K3%2Bzen6RhHXxAnoD%2BoUv HTTP/1.1',
+        'http://mp.weixin.qq.com/mp/getmasssendmsg?__biz=MjM5MjAxNDM4MA==&uin=MTM4MjQxMDAyMw%3D%3D&key=41ecb04b05111003144fdc5484df3388861f5288b35120e6684fee056388a46d23f6affa66e1a46a6593901984a561bd&devicetype=Windows+7&version=61050021&lang=zh_CN&pass_ticket=uk%2FkYRvTqIvlo2KHJ3DGYx3dmhlABtNZfZ1QPmQ6J6U6cmJpAKsf%2FYlDXG4uf4HI HTTP/1.1',
     )
     def parse(self, response):
     	json_str = response.body.split("msgList = '")[1].split("'")[0].replace('&quot;','"')
@@ -38,4 +38,5 @@ class WeixinSpider(scrapy.Spider):
         text = '\r\n'.join([head,time + ' ' + auth,content])
         with codecs.open(head+'.txt','w',encoding='utf-8') as f:
         	f.write(text)
+        #下方print语句在linux下没问题，但是在windows下会有编码问题
         print head
