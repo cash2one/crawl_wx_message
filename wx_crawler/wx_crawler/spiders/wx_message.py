@@ -26,8 +26,8 @@ class WxMessageSpider(scrapy.Spider):
     def parse_text(self, response):
         head = response.xpath('//h2[@id="activity-name"]/text()').extract()[0]
         time = response.xpath('//em[@id="post-date"]/text()').extract()[0]
-        text = response.xpath('string(//div[@id="js_content"])').extract()[0]
-        text = re.sub(r'\r|\n|\s','',text)
+        ts = response.xpath('//div[@id="js_content"]//*[text()]')
+        text = '\r\n'.join(t.xpath('text()').extract()[0] for t in ts if len(t.xpath('text()').extract()) and len(t.xpath('text()').extract()[0]))
         file_name = self.filter_file_name(head)
         with codecs.open(time + '_' + file_name + '.txt','w',encoding='utf-8') as f:
             f.write(text)

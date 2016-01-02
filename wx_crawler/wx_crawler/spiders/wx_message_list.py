@@ -33,15 +33,3 @@ class WeixinSpider(scrapy.Spider):
                 sub_url = sub['content_url']
                 yield scrapy.Request(sub_url.replace('\\','').replace('amp;amp;','amp;'), callback=self.message_crawler.parse)
         yield scrapy.Request(response.url.split('&f=text&frommsgid')[0]+"&f=text&frommsgid="+str(message_id)+"&count=10", callback=self.parse)
-
-    # def parse_text(self, response):
-    #     head = response.xpath('//h2[@id="activity-name"]/text()').extract()[0].replace('\n','').replace('\r','').strip()
-    #     ps = response.xpath('//div[@id="img-content"]/div[2]/p')
-    #     content = '\r\n'.join([p.xpath('string(.)').extract()[0] for p in ps])
-    #     time = response.xpath('//em[@id="post-date"]/text()').extract()[0]
-    #     auth = response.xpath('//a[@id="post-user"]/text()').extract()[0]
-    #     text = '\r\n'.join([head,time + ' ' + auth,content])
-    #     with codecs.open(head+'.txt','w',encoding='utf-8') as f:
-    #         f.write(text)
-    #     #下方print语句在linux下没问题，但是在windows下会有编码问题
-    #     #print head
