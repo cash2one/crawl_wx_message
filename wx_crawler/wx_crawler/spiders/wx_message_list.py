@@ -13,7 +13,7 @@ class WeixinSpider(scrapy.Spider):
     name = "weixin"
     allowed_domains = ["qq.com"]
     start_urls = (
-        'http://mp.weixin.qq.com/mp/getmasssendmsg?__biz=MjM5MjAxNDM4MA==&uin=MTM4MjQxMDAyMw%3D%3D&key=41ecb04b051110032c7441cbf9ca561cd13ecc01510163d62a95261e623d86b71a064452b41ab4e8b8195008c78ddd2d',
+        'http://mp.weixin.qq.com/mp/getmasssendmsg?__biz=MjM5MjAxNDM4MA==&uin=MTM4MjQxMDAyMw%3D%3D&key=41ecb04b05111003afda547da68feed6f460323a063e22b3afe5e1e7fed8f528ac7b2e819cf934f88b0fde47fede4944',
     )
 
     def __init__(self, img=False):
