@@ -18,7 +18,11 @@ class Message_crawl(threading.Thread):
         self.img = img
 
     def crawl_text(self, tree):
-        head = tree.xpath('//h2[@id="activity-name"]/text()')[0]
+        try:
+            head = tree.xpath('//h2[@id="activity-name"]/text()')[0]
+        except Exception:
+            print self.url, '可能不是文章而是美团红包等'
+            return
         time = tree.xpath('//em[@id="post-date"]/text()')[0]
         ts = tree.xpath('//div[@id="js_content"]//*[text()]')
         text = '\r\n'.join(t.xpath('text()')[0] for t in ts if len(t.xpath('text()')) and len(t.xpath('text()')[0]))

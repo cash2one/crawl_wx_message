@@ -190,6 +190,7 @@ class WebWx():
         return s
 
     def sync_check(self):
+        print '开始消息同步'
         while 1:
             t = self.get_time()
             url = 'https://webpush.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck?r='+t+'&skey'+self.skey+'&sid='+self.sid+'&uin='+self.uin+'&deviceid='+self.deviceid+'&synckey='+self.formate_rsync(self.sync)+'&_='+t
@@ -232,15 +233,24 @@ class WebWx():
         json_data = json.loads(data)
         # print json_data
         self.sync = json_data['SyncKey']
-        if selector == '6':
-            new_messages = json_data['AddMsgList']
-            for new_message in new_messages:
-                from_user = new_message['FromUserName']
-                url = new_message['Url']
-                if from_user in self.pub_accounts:
-                    if url:
-                        print '收到来自',self.pub_accounts[from_user],'的文章：',url
-                        t = Message_crawl(url)
+        # if selector == '6':
+        new_messages = json_data['AddMsgList']
+        for new_message in new_messages:
+            from_user = new_message['FromUserName']
+            
+             
+            url = new_message['Url']
+            if from_user in self.pub_accounts:
+                if url:
+                    print '收到来自',self.pub_accounts[from_user],'的文章：',url
+                    t = Message_crawl(url)
+                    t.start()
+                    con = new_message['Content']
+                    t_urls = con.split('&amp;scene=0#rd')[2:-1]
+                    for tu in t_urls:
+                        u = tu.split('[CDATA[')[-1]
+                        print '收到来自',self.pub_accounts[from_user],'的文章：',u
+                        t = Message_crawl(u)
                         t.start()
         return
 
