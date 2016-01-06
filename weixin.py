@@ -186,7 +186,7 @@ class WebWx():
         sl = []
         for i in l:
             sl.append(str(i['Key'])+'_'+str(i['Val']))
-        s = '%'.join(sl)
+        s = '%7C'.join(sl)
         return s
 
     def sync_check(self):
@@ -208,7 +208,9 @@ class WebWx():
                 print '同步消息出错：', resp.content
                 break
             if selector!='0':
+                print resp.content
                 self.get_sync(selector)
+            time.sleep(5)
                 # break
 
 
