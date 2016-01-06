@@ -8,10 +8,15 @@ import time
 import requests
 import codecs
 import json
+import os
+import threading
+import urllib2
+
+from crawl_message import Message_crawl
 
 class WebWx():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36', 'Origin':'https://wx.qq.com'}#, 'Origin':'https://wx.qq.com'
-    deviceid = "e062516407342628"
+    deviceid = "e752739129355177"
     localid = "14518913695500856"
     uuid = None
     wxuin = None
@@ -19,12 +24,15 @@ class WebWx():
     scan = None
     ticket = None
     skey = None
+    sync = None
     pass_ticket = None
     fname = None
+    pub_accounts = {}
     session = requests.Session()
 
     def get_time(self):
         return str(int(time.time()*1000))
+        # return int(time.time()*1000)
 
     def get_url(self, url):
         return self.session.get(url, headers=self.headers)
@@ -53,6 +61,7 @@ class WebWx():
 
         resp = self.get_url(url)
         self.uuid = resp.content.split('"')[1]
+        # window.QRLogin.code = 200; window.QRLogin.uuid = "oZwt_bFfRg==";
         return self.uuid
 
     def get_qrcode(self):
@@ -62,6 +71,7 @@ class WebWx():
         resp = self.get_url(url)
         with open('qrcode.jpg','wb') as f:
             f.write(resp.content)
+        os.system('call qrcode.jpg')
         return None
 
     def get_login_url(self):
@@ -74,8 +84,10 @@ class WebWx():
             print '手机端未扫描并确认登录'
             resp = self.get_url(url)
             qrcode_statue = resp.content.split(';')[0]
-            time.sleep(2)
+            time.sleep(0.5)
         print '手机端已确认登录'
+        os.system('taskkill /f /im dllhost.exe')
+        os.remove('qrcode.jpg')
         login_url = resp.content.split('"')[1]+'&fun=new&version=v2&lang=zh_CN'
         self.ticket = login_url.split('ticket=')[1].split('&')[0]
         self.scan = login_url.split('scan=')[1].split('&')[0]
@@ -98,9 +110,7 @@ class WebWx():
 
     def init_wx(self):
         print '初始化微信'
-        url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r='+self.get_time()+'&lang=zh_CN&pass_ticket='+self.pass_ticket
-        # url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?pass_ticket='+self.pass_ticket
-
+        url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?pass_ticket=%s&skey=%s&r=%s'%(self.pass_ticket,self.skey,self.get_time())
         data = {
             "BaseRequest":{
                 "Uin":self.uin,
@@ -109,24 +119,19 @@ class WebWx():
                 "DeviceID":self.deviceid
             }
         }
-        header = {
-            'Accept':'application/json, text/plain, */*',
-            'Accept-Encoding':'gzip, deflate',
-            'Accept-Language':'zh-CN,zh;q=0.8',
-            'Cache-Control':'no-cache',
-            'Connection':'keep-alive',
-            'Content-Length':'149',
-            'Content-Type':'application/json;charset=UTF-8',
-            'Host':'wx.qq.com',
-            'Origin':'https://wx.qq.com',
-            'Pragma':'no-cache',
-            'Referer':'https://wx.qq.com/',
-            'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36',
-        }
-
-        # resp = self.post_url(url, data=data)
-        resp = self.session.post(url,data,headers=header)
-        print resp.content
+        request = urllib2.Request(url = url, data = json.dumps(data))
+        request.add_header('ContentType', 'application/json; charset=UTF-8')
+        response = urllib2.urlopen(request)
+        data = response.read()
+        json_data = json.loads(data)
+        self.sync = json_data['SyncKey']
+        self.fname = json_data['User']['UserName']
+        MPSubscribeMsgList = json_data['MPSubscribeMsgList']
+        for MPSubscribeMsg in MPSubscribeMsgList:
+            MPArticleList = MPSubscribeMsg['MPArticleList']
+            for MPArticle in MPArticleList:
+                t = Message_crawl(MPArticle['Url'])
+                t.start()
 
     def get_contact(self):
         print '获取联系人'
@@ -134,11 +139,15 @@ class WebWx():
         resp = self.get_url(url)
         with codecs.open('contact.json','w',encoding='utf-8') as f:
             f.write(resp.content)
-        contacts = json.loads(resp.content)
-        for p in contacts['MemberList']:
-            if p['Alias'] == 'yinshenkuang':
-                self.fname = p['UserName']
-        return contacts
+        contacts = json.loads(resp.content)['MemberList']
+        print '好友人数：%d'%(len(contacts))
+
+        SpecialUsers = ['newsapp', 'fmessage', 'filehelper', 'weibo', 'qqmail', 'fmessage', 'tmessage', 'qmessage', 'qqsync', 'floatbottle', 'lbsapp', 'shakeapp', 'medianote', 'qqfriend', 'readerapp', 'blogapp', 'facebookapp', 'masssendapp', 'meishiapp', 'feedsapp', 'voip', 'blogappweixin', 'weixin', 'brandsessionholder', 'weixinreminder', 'wxid_novlwrv3lqwv11', 'gh_22b87fa7cb3c', 'officialaccounts', 'notification_messages', 'wxid_novlwrv3lqwv11', 'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages']
+        for member in contacts:
+            if member['VerifyFlag'] & 8 != 0: # 公众号/服务号
+                self.pub_accounts[member['UserName']] = member['NickName']
+        print '公众号数量：%d'%(len(self.pub_accounts))
+        return None
 
     def notify(self):
         print "notify"
@@ -148,27 +157,9 @@ class WebWx():
         print resp.content
         return json.loads(resp.content)['MsgID']
 
-
-    def get_sync(self):
-        print '获取sync'
-        url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid='+self.sid+'&skey='+self.skey+'&pass_ticket='+self.pass_ticket
-        data={}
-
-    def test(self):
-        print 'test'
-        url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?sid='+self.sid+'&r='+self.get_time()+'&skey='+self.skey
-        resp = self.post_url(url, data={})
-        print resp.content
-
-    def send_message(self, contacts):
+    def send_message(self):
         print '发送消息'
         url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?pass_ticket='+self.pass_ticket
-
-        for p in contacts['MemberList']:
-            if p['RemarkName'] == '王傲':
-                tname = p['UserName']
-                break
-
         data = {
             "BaseRequest":{
                 "Uin":int(self.uin),
@@ -180,7 +171,7 @@ class WebWx():
                 "Type":1,
                 "Content":"test",
                 "FromUserName":self.fname,
-                "ToUserName":tname,
+                "ToUserName":self.wangao,
                 "LocalID":self.localid,
                 "ClientMsgId":self.localid
             }
@@ -190,18 +181,77 @@ class WebWx():
         print resp.content
         return None
 
+    def formate_rsync(self,json_rsync):
+        l = json_rsync['List']
+        sl = []
+        for i in l:
+            sl.append(str(i['Key'])+'_'+str(i['Val']))
+        s = '%'.join(sl)
+        return s
+
+    def sync_check(self):
+        while 1:
+            t = self.get_time()
+            url = 'https://webpush.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck?r='+t+'&skey'+self.skey+'&sid='+self.sid+'&uin='+self.uin+'&deviceid='+self.deviceid+'&synckey='+self.formate_rsync(self.sync)+'&_='+t
+            resp = self.get_url(url)
+            # window.synccheck={retcode:"0",selector:"0"}
+            retcode = resp.content.split('"')[1]
+            selector = resp.content.split('"')[3]
+            # print resp.content
+            # while retcode=='0' and selector=='0':
+            #     print '暂无消息'
+            #     time.sleep(5)
+            #     resp = self.get_url(url)
+            #     retcode = resp.content.split('"')[1]
+            #     selector = resp.content.split('"')[3]
+            if int(retcode):
+                print '同步消息出错：', resp.content
+                break
+            if selector!='0':
+                self.get_sync(selector)
+                # break
+
+
+    def get_sync(self, selector):
+        # print '尝试处理新消息'
+        url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid='+self.sid+'&skey='+self.skey+'&lang=zh_CN&pass_ticket='+self.pass_ticket
+        data = {
+            "BaseRequest" : {
+                "Uin":self.uin,
+                "Sid":self.sid
+            },
+            "SyncKey" : self.sync,
+            "rr" : int(time.time())
+        }
+        request = urllib2.Request(url = url, data = json.dumps(data))
+        request.add_header('ContentType', 'application/json; charset=UTF-8')
+        response = urllib2.urlopen(request)
+        data = response.read()
+        json_data = json.loads(data)
+        # print json_data
+        self.sync = json_data['SyncKey']
+        if selector == '6':
+            new_messages = json_data['AddMsgList']
+            for new_message in new_messages:
+                from_user = new_message['FromUserName']
+                url = new_message['Url']
+                if from_user in self.pub_accounts:
+                    if url:
+                        print '收到来自',self.pub_accounts[from_user],'的文章：',url
+                        t = Message_crawl(url)
+                        t.start()
+        return
+
+
     def run(self):
-        self.prepare()
+        # self.prepare()
         self.get_uuid()
         self.get_qrcode()
         login_url = self.get_login_url()
         self.get_uin_sid(login_url)
-        self.report()
         self.init_wx()
-        messageid = self.notify()
-        contacts = self.get_contact()
-        # self.test()
-        self.send_message(contacts)
+        self.get_contact()
+        self.sync_check()
 
 def main():
     wx = WebWx()
